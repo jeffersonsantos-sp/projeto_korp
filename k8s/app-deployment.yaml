@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-server-projeto-korp
+  namespace: projeto-korp
+  labels:
+    app: http-server-projeto-korp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: http-server-projeto-korp
+  template:
+    metadata:
+      labels:
+        app: http-server-projeto-korp
+    spec:
+      containers:
+        - name: http-server
+          image: updateinformatica/projeto-korp:1.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

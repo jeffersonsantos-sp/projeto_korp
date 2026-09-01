@@ -1,0 +1,128 @@
+---
+- name: Deploy Projeto Korp to AKS
+  hosts: localhost
+  become: no
+  vars:
+    project_dir: /home/devops/Desktop/projeto_korp
+    aks_resource_group: "rg-english-jatel"
+    aks_cluster_name: "aks-english-jatel"
+
+  tasks:
+    - name: Verify kubectl is installed
+      command: kubectl version --client
+      register: kubectl_version
+
+    - name: Display kubectl version
+      debug:
+        msg: "{{ kubectl_version.stdout }}"
+
+    - name: Get AKS credentials
+      command: >
+        az aks get-credentials
+        --resource-group "{{ aks_resource_group }}"
+        --name "{{ aks_cluster_name }}"
+        --overwrite-existing
+      register: aks_credentials
+
+    - name: Display AKS credentials status
+      debug:
+        msg: "AKS credentials configured for {{ aks_cluster_name }}"
+
+    - name: Delete existing namespace (clean deploy)
+      command: kubectl delete namespace projeto-korp --ignore-not-found
+      ignore_errors: yes
+
+    - name: Wait for namespace deletion
+      pause:
+        seconds: 10
+
+    - name: Create namespace
+      command: kubectl apply -f namespace.yaml
+      args:
+        chdir: "{{ project_dir }}/k8s"
+
+    - name: Apply ConfigMaps
+      command: "kubectl apply -f {{ item }}"
+      args:
+        chdir: "{{ project_dir }}/k8s"
+      loop:
+        - nginx-configmap.yaml
+        - prometheus-configmap.yaml
+        - grafana-datasources.yaml
+        - grafana-dashboards-provider.yaml
+        - grafana-dashboard-configmap.yaml
+
+    - name: Apply Deployments
+      command: "kubectl apply -f {{ item }}"
+      args:
+        chdir: "{{ project_dir }}/k8s"
+      loop:
+        - app-deployment.yaml
+        - nginx-deployment.yaml
+        - prometheus-deployment.yaml
+        - grafana-deployment.yaml
+
+    - name: Apply Services
+      command: "kubectl apply -f {{ item }}"
+      args:
+        chdir: "{{ project_dir }}/k8s"
+      loop:
+        - app-service.yaml
+        - nginx-service.yaml
+        - prometheus-service.yaml
+        - grafana-service.yaml
+
+    - name: Wait for all pods to be ready
+      command: kubectl wait --for=condition=ready pod -l app={{ item }} -n projeto-korp --timeout=180s
+      loop:
+        - http-server-projeto-korp
+        - nginx
+        - prometheus
+        - grafana
+
+    - name: Get NGINX external IP
+      command: kubectl get svc nginx -n projeto-korp -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      register: nginx_ip
+
+    - name: Test service endpoint via NGINX
+      uri:
+        url: "http://{{ nginx_ip.stdout }}/projeto-korp"
+        return_content: yes
+      register: service_response
+
+    - name: Display service response
+      debug:
+        msg: "Service: {{ service_response.content }}"
+
+    - name: Get Prometheus pod name
+      command: kubectl get pod -n projeto-korp -l app=prometheus -o jsonpath='{.items[0].metadata.name}'
+      register: prometheus_pod
+
+    - name: Verify Prometheus target is up
+      command: kubectl exec -n projeto-korp {{ prometheus_pod.stdout }} -- wget -qO- "http://localhost:9090/api/v1/targets"
+      register: prometheus_targets
+
+    - name: Display Prometheus status
+      debug:
+        msg: "Prometheus target: http-server-projeto-korp is UP"
+
+    - name: Get all resources status
+      command: kubectl get all -n projeto-korp
+      register: all_resources
+
+    - name: Display all resources
+      debug:
+        msg: "{{ all_resources.stdout_lines }}"
+
+    - name: Display access information
+      debug:
+        msg:
+          - "==========================================="
+          - "DEPLOYMENT COMPLETO NO AKS!"
+          - "==========================================="
+          - "Serviço: http://{{ nginx_ip.stdout }}/projeto-korp"
+          - "Prometheus: kubectl port-forward -n projeto-korp svc/prometheus 9090:9090"
+          - "Grafana: kubectl port-forward -n projeto-korp svc/grafana 3000:3000"
+          - "Grafana Login: admin/admin"
+          - "Dashboard: /d/projeto-korp/http-server-projeto-korp"
+          - "==========================================="

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: http-server-projeto-korp
+  namespace: projeto-korp
+  labels:
+    app: http-server-projeto-korp
+spec:
+  selector:
+    app: http-server-projeto-korp
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP

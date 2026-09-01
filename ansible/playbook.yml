@@ -1,0 +1,68 @@
+---
+- name: Deploy Projeto Korp
+  hosts: localhost
+  become: no
+  vars:
+    project_dir: /home/devops/Desktop/projeto_korp
+
+  tasks:
+    - name: Verify Docker is installed
+      command: docker --version
+      register: docker_version
+
+    - name: Display Docker version
+      debug:
+        msg: "{{ docker_version.stdout }}"
+
+    - name: Stop existing containers
+      command: docker compose down
+      args:
+        chdir: "{{ project_dir }}"
+      ignore_errors: yes
+
+    - name: Build and start all containers
+      command: docker compose up -d --build
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Wait for service to be ready
+      uri:
+        url: "http://localhost:80/projeto-korp"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 3
+
+    - name: Test service endpoint
+      uri:
+        url: "http://localhost:80/projeto-korp"
+        return_content: yes
+      register: response
+
+    - name: Display service response
+      debug:
+        msg: "Service response: {{ response.content }}"
+
+    - name: Verify Prometheus is running
+      uri:
+        url: "http://localhost:9090"
+        status_code: 200
+
+    - name: Wait for Grafana to be ready
+      pause:
+        seconds: 30
+
+    - name: Verify Grafana is running
+      uri:
+        url: "http://localhost:3000"
+        status_code:
+          - 200
+          - 302
+
+    - name: Display access information
+      debug:
+        msg:
+          - "Service: http://localhost:80/projeto-korp"
+          - "Prometheus: http://localhost:9090"
+          - "Grafana: http://localhost:3000 (admin/admin)"
