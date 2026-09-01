@@ -1,0 +1,55 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+# Build
+http-server
+http-server-projeto-korp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Ansible
+*.retry
+ansible/*.retry
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Logs
+*.log
+
+# Temp
+/tmp/
+*.tmp
+*.bak
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Python venv
+~/ansible-venv/
+venv/
+.venv/
