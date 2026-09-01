@@ -8,7 +8,7 @@ services:
       - "8080"
 
   nginx:
-    image: nginx:alpine
+    image: cgr.dev/chainguard/nginx:latest
     container_name: nginx
     ports:
       - "80:80"
@@ -20,7 +20,7 @@ services:
       - app-network
 
   prometheus:
-    image: prom/prometheus:latest
+    image: cgr.dev/chainguard/prometheus:latest
     container_name: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
@@ -30,7 +30,7 @@ services:
       - app-network
 
   grafana:
-    image: grafana/grafana:latest
+    image: cgr.dev/chainguard/grafana:latest
     container_name: grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin

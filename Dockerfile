@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM cgr.dev/chainguard/go:1.26 AS builder
 
 WORKDIR /app
 
@@ -8,9 +8,7 @@ RUN go mod download
 COPY main.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o http-server .
 
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates
+FROM cgr.dev/chainguard/static:latest
 
 WORKDIR /root/
 

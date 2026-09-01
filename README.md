@@ -104,11 +104,11 @@ Cliente → NGINX (:80) → Go App (:8080) → Resposta JSON
 | Container | Docker | 29.7.2 |
 | Orquestracao | Kubernetes | 1.35.7 |
 | Cloud | Azure AKS | - |
-| Reverse Proxy | NGINX | alpine |
-| Metricas | Prometheus | latest |
-| Dashboard | Grafana | latest |
+| Reverse Proxy | NGINX | Chainguard |
+| Metricas | Prometheus | Chainguard |
+| Dashboard | Grafana | Chainguard |
 | Automacao | Ansible | 2.21.3 |
-| Registry | DockerHub | - |
+| Registry | DockerHub + Chainguard | - |
 
 ---
 
