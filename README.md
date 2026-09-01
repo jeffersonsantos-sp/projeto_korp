@@ -182,8 +182,8 @@ projeto_korp/
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/updateinformatica/projeto-korp.git
-cd projeto-korp
+git clone https://github.com/jeffersonsantos-sp/projeto_korp.git
+cd projeto_korp
 
 # Build e rodar
 docker compose up -d --build
