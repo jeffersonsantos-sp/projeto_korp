@@ -1,0 +1,6 @@
+# Trivy Ignore File
+# Add CVEs to ignore here (one per line)
+# Example: CVE-2024-12345
+
+# Ignore unfixed vulnerabilities
+# These are typically in base images and will be fixed upstream

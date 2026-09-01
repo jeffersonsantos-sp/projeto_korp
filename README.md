@@ -448,9 +448,63 @@ Tempo: 1 minuto
 - [ ] Distributed tracing (Jaeger)
 
 ### CI/CD
-- [ ] GitHub Actions
-- [ ] Automatizar build + push + deploy
-- [ ] Environment promotion
+- [x] GitHub Actions
+- [x] Automatizar build + push + deploy
+- [x] Trivy security scan
+- [x] Environment promotion
+
+---
+
+## CI/CD Pipeline
+
+### Fluxo
+
+```
+git push (tag v1.0.0)
+    │
+    ▼
+┌─────────────────────────────────────────┐
+│           GitHub Actions                │
+├─────────────────────────────────────────┤
+│ 1. Build & Test Go                      │
+│ 2. Docker build & push                  │
+│ 3. Trivy security scan (CRITICAL/HIGH)  │
+│ 4. Deploy to AKS (staging)              │
+│ 5. Notification                         │
+└─────────────────────────────────────────┘
+```
+
+### Jobs
+
+| Job | Descricao | Trigger |
+|-----|-----------|---------|
+| build | Compila Go e roda testes | push, PR |
+| docker-build | Build e push da imagem | tag v* |
+| trivy-scan | Scan de seguranca | tag v* |
+| deploy-staging | Deploy no AKS | tag v* |
+| notify | Notificacao final | sempre |
+
+### Configuracao
+
+**Secrets necessarios no GitHub:**
+- `DOCKERHUB_USERNAME` - Usuario DockerHub
+- `DOCKERHUB_TOKEN` - Token DockerHub
+- `AZURE_CREDENTIALS` - Credenciais Azure (JSON)
+
+**Como fazer push com tag:**
+```bash
+# Criar tag
+git tag v1.0.0
+
+# Push da tag
+git push origin v1.0.0
+```
+
+**Verificar workflow:**
+```bash
+# Acoes do repo
+https://github.com/jeffersonsantos-sp/projeto_korp/actions
+```
 
 ---
 

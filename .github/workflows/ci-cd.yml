@@ -1,0 +1,187 @@
+name: CI/CD - Build, Scan & Push
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: updateinformatica/projeto-korp
+  GO_VERSION: "1.26"
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build binary
+        run: |
+          CGO_ENABLED=0 GOOS=linux go build -o http-server .
+          echo "Build completed successfully"
+
+  docker-build:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  trivy-scan:
+    name: Security Scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Run Trivy (SARIF output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: trivy-scan
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Azure CLI
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group rg-english-jatel \
+            --name aks-english-jatel
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update image version in deployment
+        run: |
+          sed -i "s|image: ${{ env.IMAGE_NAME }}:.*|image: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}|g" k8s/app-deployment.yaml
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/http-server-projeto-korp -n projeto-korp --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n projeto-korp
+          echo ""
+          echo "=== Services ==="
+          kubectl get svc -n projeto-korp
+          echo ""
+          echo "=== Testing endpoint ==="
+          NGINX_IP=$(kubectl get svc nginx -n projeto-korp -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          curl -s http://$NGINX_IP/projeto-korp | jq .
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [docker-build, trivy-scan, deploy-staging]
+    if: always()
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Send notification
+        run: |
+          echo "========================================="
+          echo "  CI/CD Pipeline Completed"
+          echo "========================================="
+          echo ""
+          echo "Version: ${{ steps.version.outputs.VERSION }}"
+          echo "Image: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}"
+          echo ""
+          echo "Jobs status:"
+          echo "  - Build: ${{ needs.build.result }}"
+          echo "  - Docker: ${{ needs.docker-build.result }}"
+          echo "  - Trivy: ${{ needs.trivy-scan.result }}"
+          echo "  - Deploy: ${{ needs.deploy-staging.result }}"
+          echo "========================================="
