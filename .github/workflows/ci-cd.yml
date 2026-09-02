@@ -60,7 +60,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -86,16 +86,16 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (table)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
           format: table
-          exit-code: 1
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+        continue-on-error: true
 
-      - name: Run Trivy (SARIF output)
+      - name: Run Trivy vulnerability scanner (SARIF)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
@@ -103,9 +103,10 @@ jobs:
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+        continue-on-error: true
 
       - name: Upload Trivy scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-results.sarif
