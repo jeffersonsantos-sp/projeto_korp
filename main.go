@@ -65,8 +65,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	requestDuration.WithLabelValues(r.Method, r.URL.Path).Observe(duration)
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "healthy",
+		"service": "http-server-projeto-korp",
+	})
+}
+
 func main() {
 	http.HandleFunc("/projeto-korp", handler)
+	http.HandleFunc("/health", healthHandler)
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(":8080", nil)
 }
