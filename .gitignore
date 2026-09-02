@@ -53,3 +53,6 @@ ansible/*.retry
 ~/ansible-venv/
 venv/
 .venv/
+
+# Personal notes
+docs/PASSO_A_PASSO.md
