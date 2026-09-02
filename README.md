@@ -460,7 +460,7 @@ Tempo: 1 minuto
 ### Fluxo
 
 ```
-git push (tag v1.0.0)
+git push (tag v2.0.0)
     │
     ▼
 ┌─────────────────────────────────────────┐
@@ -487,24 +487,69 @@ git push (tag v1.0.0)
 ### Configuracao
 
 **Secrets necessarios no GitHub:**
-- `DOCKERHUB_USERNAME` - Usuario DockerHub
-- `DOCKERHUB_TOKEN` - Token DockerHub
-- `AZURE_CREDENTIALS` - Credenciais Azure (JSON)
+- `DOCKERHUB_USERNAME` - Usuario DockerHub (`updateinformatica`)
+- `DOCKERHUB_TOKEN` - Token DockerHub (gerar em https://hub.docker.com/settings/security)
+- `AZURE_CREDENTIALS` - Credenciais Azure (JSON do service principal)
 
-**Como fazer push com tag:**
+### Como Fazer Deploy com Tags
+
+**Fluxo completo:**
+
 ```bash
-# Criar tag
-git tag v1.0.0
+# 1. Fazer alteracoes
+git add .
 
-# Push da tag
-git push origin v1.0.0
+# 2. Commit
+git commit -m "Descricao da alteracao"
+
+# 3. Push do commit
+git push
+
+# 4. Criar tag (versionamento)
+git tag v2.0.0
+
+# 5. Push da tag (dispara CI/CD)
+git push origin v2.0.0
 ```
 
-**Verificar workflow:**
+**Versionamento semantico:**
+- `v1.0.0` → `v1.0.1` (bugfix)
+- `v1.0.0` → `v1.1.0` (nova feature)
+- `v1.0.0` → `v2.0.0` (breaking change)
+
+**Exemplo pratico:**
+
 ```bash
-# Acoes do repo
-https://github.com/jeffersonsantos-sp/projeto_korp/actions
+# Alterar tag da imagem no manifesto
+sed -i 's|image: updateinformatica/projeto-korp:.*|image: updateinformatica/projeto-korp:2.1.0|g' k8s/app-deployment.yaml
+
+# Commit e push
+git add k8s/app-deployment.yaml
+git commit -m "Atualizado tag da imagem para 2.1.0"
+git push
+
+# Criar e push da tag
+git tag v2.1.0
+git push origin v2.1.0
 ```
+
+### Verificar Pipeline
+
+**Acoes do repo:**
+`https://github.com/jeffersonsantos-sp/projeto_korp/actions`
+
+**Verificar imagem no DockerHub:**
+`https://hub.docker.com/r/updateinformatica/projeto-korp/tags`
+
+### Trivy Security Scan
+
+O Trivy verifica vulnerabilidades na imagem Docker:
+- **CRITICAL** → Bloqueia o deploy
+- **HIGH** → Alerta mas nao bloqueia
+- **MEDIUM/LOW** → Apenas registro
+
+**Resultados ficam em:**
+`https://github.com/jeffersonsantos-sp/projeto_korp/security/code-scanning`
 
 ---
 
@@ -527,9 +572,16 @@ https://github.com/jeffersonsantos-sp/projeto_korp/actions
 docker compose up -d --build          # Rodar local
 curl http://localhost:80/projeto-korp # Testar
 
-# === DEPLOY ===
+# === DEPLOY MANUAL ===
 cd ansible
 ~/ansible-venv/bin/ansible-playbook -i inventory.ini playbook-aks.yml
+
+# === CI/CD (RECOMENDADO) ===
+git add .                             # Adicionar alteracoes
+git commit -m "Descricao"            # Commit
+git push                             # Push
+git tag v2.0.0                       # Criar tag
+git push origin v2.0.0               # Push da tag (dispara CI/CD)
 
 # === VERIFICAR ===
 kubectl get pods -n projeto-korp      # Pods
