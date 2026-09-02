@@ -541,22 +541,22 @@ kubectl port-forward -n projeto-korp svc/grafana 3000:3000     # Grafana
 kubectl port-forward -n projeto-korp svc/prometheus 9090:9090  # Prometheus
 
 # === DOCKER ===
-docker build -t updateinformatica/projeto-korp:1.0 .  # Build
-docker push updateinformatica/projeto-korp:1.0         # Push
+docker build -t updateinformatica/projeto-korp:2.0 .  # Build
+docker push updateinformatica/projeto-korp:2.0         # Push
 ```
 
 ---
 
 ## DockerHub
 
-**Imagem:** `updateinformatica/projeto-korp:1.0`
+**Imagem:** `updateinformatica/projeto-korp:2.0`
 
 ```bash
 # Build
-docker build -t updateinformatica/projeto-korp:1.0 .
+docker build -t updateinformatica/projeto-korp:2.0 .
 
 # Push
-docker push updateinformatica/projeto-korp:1.0
+docker push updateinformatica/projeto-korp:2.0
 ```
 
 ---

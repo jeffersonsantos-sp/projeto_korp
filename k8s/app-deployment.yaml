@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: http-server
-          image: updateinformatica/projeto-korp:1.0
+          image: updateinformatica/projeto-korp:2.0
           ports:
             - containerPort: 8080
           resources:
