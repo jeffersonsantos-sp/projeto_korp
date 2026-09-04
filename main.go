@@ -57,7 +57,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Nome:    "Projeto Korp",
-		Horario: time.Now().UTC().Format(time.RFC3339),
+		Horario: time.Now().In(time.FixedZone("BRT", -3*3600)).Format(time.RFC3339),
 	})
 
 	duration := time.Since(start).Seconds()
