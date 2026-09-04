@@ -16,6 +16,7 @@ Deploy completo de aplicação Go + NGINX + Prometheus + Grafana no Azure AKS us
 - [Deploy com Ansible](#deploy-com-ansible)
 - [Endpoints](#endpoints)
 - [Monitoramento](#monitoramento)
+- [Incident Response](#incident-response)
 - [Problemas e Solucoes](#problemas-e-solucoes)
 - [Desenvolvimento com IA](#desenvolvimento-com-ia)
 - [Melhorias Futuras](#melhorias-futuras)
@@ -160,7 +161,22 @@ projeto_korp/
 │   ├── PROMPT.md                    # Prompts para recriar
 │   ├── SKILL.md                     # Skill definition
 │   ├── BRAINSTORM.md                # Decisoes e melhorias
-│   └── PRESENTACAO.md               # Guia para entrevista
+│   ├── PRESENTACAO.md               # Guia para entrevista
+│   └── POST_MORTEM_*.md             # Post-mortems de incidentes
+│
+├── .opencode/skills/                # Skills para OpenCode
+│   └── incident-response/
+│       ├── SKILL.md                 # Workflow de incidentes
+│       ├── scripts/                 # Scripts de investigacao
+│       ├── templates/               # Templates de post-mortem
+│       └── references/              # Referencia de comandos
+│
+├── .claude/skills/                  # Skills para Claude Code
+│   └── incident-response/
+│       ├── SKILL.md
+│       ├── scripts/
+│       ├── templates/
+│       └── references/
 │
 ├── AGENTS.md                        # Instrucoes para agentes
 ├── README.md                        # Este arquivo
@@ -318,6 +334,76 @@ service_up
 
 ---
 
+## Incident Response
+
+### Skill de Incidentes
+
+O projeto inclui um **skill automatizado** para investigacao e resolucao de incidentes em Kubernetes/AKS.
+
+```
+.opencode/skills/incident-response/
+├── SKILL.md                         # Workflow principal
+├── scripts/
+│   ├── incident-investigate.sh      # Investigacao automatizada
+│   └── generate-postmortem.sh       # Geracao de post-mortem
+├── templates/
+│   └── POST_MORTEM_TEMPLATE.md      # Template padrao
+└── references/
+    └── K8S_DEBUG_COMMANDS.md        # Referencia rapida
+```
+
+### Quando Usar
+
+- Servico fora do ar (pod crash, deploy failed)
+- Pods com CrashLoopBackOff ou ImagePullBackOff
+- Readiness/Liveness probe falhando
+- Conexao recusada em endpoints
+- Qualquer erro Kubernetes/AKS
+
+### Workflow Automatico
+
+| Fase | Descricao | Comando |
+|------|-----------|---------|
+| 1. Triage | Verifica ns, pods, eventos | `kubectl get all -n <ns>` |
+| 2. Deep Dive | Analisa componente especifico | `kubectl describe <resource>` |
+| 3. Root Cause | Identifica causa raiz | Evidencia coletada |
+| 4. Resolution | Aplica correcao | `kubectl scale/set image` |
+| 5. Post-Mortem | Gera documento | `generate-postmortem.sh` |
+
+### Exemplo de Uso
+
+```bash
+# Investigar incidente no namespace projeto-korp
+./.opencode/skills/incident-response/scripts/incident-investigate.sh projeto-korp
+
+# Gerar post-mortem
+./.opencode/skills/incident-response/scripts/generate-postmortem.sh projeto-korp "HTTP Server Down"
+```
+
+### Post-Mortem Padrao
+
+O skill gera post-mortems estruturados com:
+
+- **Timeline** - Cronologia do incidente
+- **Causa Raiz** - Analise tecnica baseada em evidencia
+- **Impacto** - Duracao, servicos afetados, dados perdidos
+- **Correcao** - Acoes tomadas para resolver
+- **Licoes Aprendidas** - Melhorias identificadas
+- **Recomendacoes** - Acoes P0/P1/P2
+
+**Exemplo:** [POST_MORTEM_2026-09-04.md](docs/POST_MORTEM_2026-09-04.md)
+
+### Severidade de Incidentes
+
+| Nivel | Descricao | Tempo Resposta |
+|-------|-----------|----------------|
+| SEV1 | Servico完全 offline | Imediato |
+| SEV2 | Feature principal quebrada | < 1 hora |
+| SEV3 | Feature quebrada com workaround | < 4 horas |
+| SEV4 | Problema menor | Proximo dia util |
+
+---
+
 ## Problemas e Solucoes
 
 ### 1. Dashboard Grafana sem dados
@@ -446,6 +532,14 @@ Tempo: 1 minuto
 - [ ] Prometheus AlertManager
 - [ ] Grafana alerting
 - [ ] Distributed tracing (Jaeger)
+- [ ] Incident Response automatizado
+
+### Incident Management
+- [x] Skill de incidentes para OpenCode/Claude
+- [x] Scripts de investigacao automatizada
+- [x] Template de post-mortem padronizado
+- [ ] Integracao com Slack/Teams para alertas
+- [ ] Runbooks automaticos
 
 ### CI/CD
 - [x] GitHub Actions
@@ -562,6 +656,14 @@ O Trivy verifica vulnerabilidades na imagem Docker:
 | [docs/SKILL.md](docs/SKILL.md) | Skill definition |
 | [docs/BRAINSTORM.md](docs/BRAINSTORM.md) | Decisoes tecnicas e melhorias |
 | [docs/PRESENTACAO.md](docs/PRESENTACAO.md) | Guia para entrevista |
+| [docs/POST_MORTEM_*.md](docs/) | Post-mortems de incidentes |
+
+### Skills Disponiveis
+
+| Skill | Localizacao | Descricao |
+|-------|-------------|-----------|
+| incident-response | `.opencode/skills/incident-response/` | Investigacao e resolucao de incidentes K8s |
+| incident-response | `.claude/skills/incident-response/` | Mesmo skill para Claude Code |
 
 ---
 
@@ -587,6 +689,12 @@ git push origin v2.0.0               # Push da tag (dispara CI/CD)
 kubectl get pods -n projeto-korp      # Pods
 kubectl get svc -n projeto-korp       # Services
 kubectl logs -n projeto-korp -l app=http-server-projeto-korp  # Logs
+
+# === INCIDENT RESPONSE ===
+kubectl get events -n projeto-korp --sort-by='.lastTimestamp'  # Eventos
+kubectl describe deployment http-server-projeto-korp -n projeto-korp  # Deploy detail
+kubectl logs -n projeto-korp -l app=http-server-projeto-korp --tail=100  # Logs
+kubectl scale deployment http-server-projeto-korp -n projeto-korp --replicas=1  # Scale
 
 # === ACESSAR ===
 kubectl port-forward -n projeto-korp svc/grafana 3000:3000     # Grafana
@@ -640,6 +748,8 @@ Ansible e agentless e mais simples para deploy de aplicacoes. Terraform seria me
 5. **NodePort** - Quando LoadBalancer nao e possivel
 6. **Validacao** - Ansible deve testar apos aplicar
 7. **Documentacao** - AGENTS.md facilita reproducao
+8. **Incident Response** - Skill automatizado reduz MTTR
+9. **Post-Mortem** - Documentar incidentes previne recorrencia
 
 ---
 
