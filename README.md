@@ -679,11 +679,11 @@ cd ansible
 ~/ansible-venv/bin/ansible-playbook -i inventory.ini playbook-aks.yml
 
 # === CI/CD (RECOMENDADO) ===
-git add .                             # Adicionar alteracoes
+git add .                            # Adicionar alteracoes
 git commit -m "Descricao"            # Commit
 git push                             # Push
-git tag v2.0.0                       # Criar tag
-git push origin v2.0.0               # Push da tag (dispara CI/CD)
+git tag v2.0.                        # Criar tag
+git push origin v2.0                 # Push da tag (dispara CI/CD)
 
 # === VERIFICAR ===
 kubectl get pods -n projeto-korp      # Pods
