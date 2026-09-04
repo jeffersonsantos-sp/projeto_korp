@@ -6,7 +6,7 @@ metadata:
   labels:
     app: http-server-projeto-korp
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: http-server-projeto-korp
@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: http-server
-          image: updateinformatica/projeto-korp:2.0
+          image: updateinformatica/projeto-korp:2.4
           ports:
             - containerPort: 8080
           resources:
